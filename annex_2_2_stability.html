@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>附属書[2-2] 旅客船復原性シミュレーター</title>
+<style>
+:root {
+  --bg1: #0b1624;
+  --bg2: #0f1e30;
+  --bg3: #152538;
+  --card: rgba(255,255,255,.05);
+  --card-border: rgba(255,255,255,.10);
+  --card-border-focus: rgba(80,160,255,.40);
+  --input-bg: rgba(0,0,0,.30);
+  --input-border: rgba(255,255,255,.14);
+  --input-border-focus: rgba(80,160,255,.70);
+  --text: #e8eef6;
+  --text-sub: #8fa8c4;
+  --text-hint: #4a6580;
+  --accent: #2a7de1;
+  --accent-hover: #3a8ef3;
+  --accent-light: rgba(42,125,225,.18);
+  --ok: #4dd0a0;
+  --ok-bg: rgba(77,208,160,.14);
+  --ng: #f07060;
+  --ng-bg: rgba(240,112,96,.14);
+  --warn: #f0b040;
+  --warn-bg: rgba(240,176,64,.14);
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{min-height:100%}
+body{
+  font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  background:linear-gradient(160deg,var(--bg1) 0%,var(--bg2) 50%,var(--bg3) 100%);
+  background-attachment:fixed;
+  color:var(--text);
+  font-size:14px;
+  line-height:1.65;
+  min-height:100vh;
+}
+.hero{text-align:center;padding:2.8rem 1rem 2rem}
+.hero .eyebrow{font-size:11px;letter-spacing:.18em;color:var(--text-sub);text-transform:uppercase;margin-bottom:.7rem}
+.hero h1{font-size:clamp(22px,4vw,30px);font-weight:700;color:#fff;line-height:1.35;margin-bottom:.55rem;letter-spacing:.02em}
+.hero .sub{font-size:12.5px;color:var(--text-sub)}
+.tab-row{display:flex;justify-content:center;gap:4px;margin:0 auto 1.6rem;padding:0 1rem;max-width:700px}
+.tab-btn{flex:1;max-width:160px;height:36px;border:1px solid var(--card-border);background:var(--card);color:var(--text-sub);border-radius:100px;font-size:13px;font-family:inherit;cursor:pointer;transition:all .18s;letter-spacing:.02em}
+.tab-btn:hover{border-color:var(--card-border-focus);color:var(--text)}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.container{max-width:740px;margin:0 auto;padding:0 1rem 3rem}
+.main-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:1.6rem 1.4rem;backdrop-filter:blur(2px)}
+.sec{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--text-sub);text-transform:uppercase;margin:1.4rem 0 .75rem;padding-bottom:.35rem;border-bottom:1px solid rgba(255,255,255,.07)}
+.sec:first-child{margin-top:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:540px){.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:380px){.g2,.g3{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11.5px;color:var(--text-sub);font-weight:500;line-height:1.3}
+.field .unit{font-size:10px;color:var(--text-hint)}
+.field input,.field select{height:38px;padding:0 12px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:inherit;width:100%;transition:border-color .15s,box-shadow .15s}
+.field input::placeholder{color:var(--text-hint)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--input-border-focus);box-shadow:0 0 0 3px rgba(42,125,225,.18)}
+.field select option{background:#1a2d42;color:var(--text)}
+.note{font-size:11.5px;color:var(--text-hint);line-height:1.6;margin-bottom:6px}
+.radio-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.radio-label{display:flex;align-items:center;gap:7px;padding:7px 14px;border:1px solid var(--card-border);border-radius:100px;cursor:pointer;font-size:13px;color:var(--text-sub);transition:all .15s;user-select:none}
+.radio-label:hover{border-color:var(--card-border-focus);color:var(--text)}
+.radio-label input[type=radio]{accent-color:var(--accent);width:14px;height:14px}
+.radio-label.checked{background:var(--accent-light);border-color:var(--accent);color:#fff;font-weight:600}
+.layer-wrap{overflow-x:auto}
+.layer-table{width:100%;border-collapse:collapse;min-width:320px}
+.layer-table th{font-size:11px;color:var(--text-hint);font-weight:600;padding:4px 8px 6px;text-align:center;letter-spacing:.06em}
+.layer-table td{padding:4px 6px}
+.layer-table td:first-child{font-size:12px;color:var(--text-sub);font-weight:500;width:36px}
+.layer-table input{height:32px;padding:0 8px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:inherit;width:100%}
+.layer-table input:focus{outline:none;border-color:var(--input-border-focus)}
+.run-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;margin-top:1.6rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.06em;transition:background .15s,transform .1s,box-shadow .15s;box-shadow:0 4px 20px rgba(42,125,225,.35)}
+.run-btn:hover{background:var(--accent-hover);box-shadow:0 6px 24px rgba(42,125,225,.50)}
+.run-btn:active{transform:scale(.98)}
+.r-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:.9rem 1rem;margin-bottom:.75rem}
+.result-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);gap:8px}
+.result-row:last-child{border-bottom:none}
+.result-row .lbl{color:var(--text-sub);font-size:12.5px;flex:1}
+.result-row .val{font-weight:600;font-size:13px;font-family:'Courier New',monospace;color:var(--text);white-space:nowrap}
+.verdict{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--radius-sm);margin-top:10px;font-size:13px;font-weight:600}
+.verdict.ok{background:var(--ok-bg);color:var(--ok)}
+.verdict.ng{background:var(--ng-bg);color:var(--ng)}
+.badge{display:inline-block;padding:1px 8px;border-radius:100px;font-size:11px;font-weight:700}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}
+.badge.ng{background:var(--ng-bg);color:var(--ng)}
+.answer-box{text-align:center;padding:1.6rem 1rem 1.4rem;background:rgba(42,125,225,.12);border:1px solid rgba(42,125,225,.40);border-radius:var(--radius);margin:1rem 0 .75rem}
+.answer-box .big{font-size:52px;font-weight:800;color:#fff;line-height:1;text-shadow:0 0 30px rgba(42,125,225,.6)}
+.answer-box .sub{font-size:13px;color:var(--text-sub);margin-top:7px}
+.answer-box .detail{font-size:11px;color:var(--text-hint);margin-top:3px}
+.cmp-wrap{overflow-x:auto}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:360px}
+.cmp-table th{background:rgba(255,255,255,.04);color:var(--text-hint);font-size:11px;font-weight:700;padding:6px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08);letter-spacing:.05em}
+.cmp-table th:first-child{text-align:center}
+.cmp-table td{padding:5px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);font-family:'Courier New',monospace;color:var(--text-sub)}
+.cmp-table td:first-child{text-align:center;font-family:inherit;font-weight:700;color:var(--text)}
+.cmp-table tr.hl td{background:rgba(42,125,225,.12);color:var(--text)}
+.formula-block{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--text-sub);font-family:'Courier New',monospace;line-height:1.9;margin-top:8px;white-space:pre-wrap}
+.step-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.step-item{display:flex;gap:10px;align-items:flex-start}
+.step-num{min-width:22px;height:22px;border-radius:50%;background:var(--accent-light);border:1px solid rgba(42,125,225,.4);color:#7bbfff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-text{font-size:12.5px;color:var(--text-sub);line-height:1.65}
+.empty{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:13px}
+footer{text-align:center;padding:1.5rem;font-size:11px;color:var(--text-hint);border-top:1px solid rgba(255,255,255,.06);margin-top:2rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow">JCI ─ 附属書 [2-2]</div>
+  <h1>旅客船復原性シミュレーター</h1>
+  <div class="sub">旅客搭載場所が２層以上、又は主要寸法比が特殊な小型船舶（小安則 附属書[2-2]）</div>
+</div>
+
+<div class="tab-row">
+  <button class="tab-btn active" onclick="switchTab('input')">入力</button>
+  <button class="tab-btn" onclick="switchTab('result')">計算結果</button>
+  <button class="tab-btn" onclick="switchTab('guide')">算式・手順</button>
+</div>
+
+<div class="container">
+
+  <!-- INPUT -->
+  <div id="tab-input" class="tab-pane active">
+  <div class="main-card">
+
+    <div class="sec">傾斜試験データ</div>
+    <div class="g3">
+      <div class="field">
+        <label>W — 移動重量物 <span style="font-size:10px;opacity:.6">t</span></label>
+        <input id="W" type="number" step="0.001" placeholder="例：0.10">
+        <span class="unit">傾斜試験に使用</span>
+      </div>
+      <div class="field">
+        <label>ℓ — 移動距離 <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="ell" type="number" step="0.01" placeholder="例：1.00">
+        <span class="unit">水平横方向</span>
+      </div>
+      <div class="field">
+        <label>θ — 横傾斜角 <span style="font-size:10px;opacity:.6">°</span></label>
+        <input id="theta" type="number" step="0.1" placeholder="例：2.0">
+        <span class="unit">傾斜角度</span>
+      </div>
+    </div>
+    <div class="g2" style="margin-top:12px">
+      <div class="field">
+        <label>d₀ — 平均喫水 <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="d0" type="number" step="0.01" placeholder="例：0.50">
+        <span class="unit">試験時 キール上面から</span>
+      </div>
+      <div class="field">
+        <label>f₀ — 乾げん <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="f0" type="number" step="0.01" placeholder="例：0.80">
+        <span class="unit">傾斜試験時</span>
+      </div>
+    </div>
+
+    <div class="sec">船体主要寸法</div>
+    <div class="g3">
+      <div class="field">
+        <label>L — 船の長さ <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="L" type="number" step="0.01" placeholder="例：10.00">
+      </div>
+      <div class="field">
+        <label>B — 最大幅 <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="B" type="number" step="0.01" placeholder="例：3.00">
+      </div>
+      <div class="field">
+        <label>B̄ — 旅客移動可能幅 <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="Bbar" type="number" step="0.01" placeholder="例：2.50">
+      </div>
+    </div>
+
+    <div class="sec">乾げん・搭載条件</div>
+    <div class="g2">
+      <div class="field">
+        <label>F₁ — 最小乾げん（無人） <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="F1" type="number" step="0.01" placeholder="例：0.60">
+      </div>
+      <div class="field">
+        <label>F₂ — 船尾最小乾げん（無人） <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="F2" type="number" step="0.01" placeholder="例：0.55">
+      </div>
+    </div>
+    <div class="g2" style="margin-top:12px">
+      <div class="field">
+        <label>Wc — 貨物質量 <span style="font-size:10px;opacity:.6">t</span></label>
+        <input id="Wc" type="number" step="0.01" placeholder="例：0（旅客専用）">
+        <span class="unit">旅客専用の場合は 0</span>
+      </div>
+      <div class="field">
+        <label>Hc — 貨物重心高 <span style="font-size:10px;opacity:.6">m</span></label>
+        <input id="Hc" type="number" step="0.01" placeholder="例：0">
+        <span class="unit">キール上面から</span>
+      </div>
+    </div>
+
+    <div class="sec">旅客搭載場所（多層デッキ対応）</div>
+    <p class="note">1層のみの場合は n₁・h₁ のみ入力（2層以降は 0）。複数層の場合、h を加重平均で算定します。</p>
+    <div class="layer-wrap">
+      <table class="layer-table">
+        <thead><tr><th style="text-align:left">層</th><th>定員 n（人）</th><th>床高 h（m）</th></tr></thead>
+        <tbody>
+          <tr><td>1層</td><td><input id="n1" type="number" min="0" placeholder="0"></td><td><input id="h1" type="number" step="0.01" placeholder="0.00"></td></tr>
+          <tr><td>2層</td><td><input id="n2" type="number" min="0" placeholder="0"></td><td><input id="h2" type="number" step="0.01" placeholder="0.00"></td></tr>
+          <tr><td>3層</td><td><input id="n3" type="number" min="0" placeholder="0"></td><td><input id="h3" type="number" step="0.01" placeholder="0.00"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec">航行区域</div>
+    <div class="radio-group">
+      <label class="radio-label checked" id="lbl-coastal" onclick="setZone('coastal')">
+        <input type="radio" name="zone" value="coastal" checked> 沿海区域（③式も適用）
+      </label>
+      <label class="radio-label" id="lbl-inland" onclick="setZone('inland')">
+        <input type="radio" name="zone" value="inland"> 平水・限定沿海（①②式のみ）
+      </label>
+    </div>
+
+    <button class="run-btn" onclick="calculate()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 1.5l10 5.5-10 5.5V1.5z" fill="currentColor"/></svg>
+      復原性を判定する
+    </button>
+
+  </div>
+  </div><!-- /input -->
+
+  <!-- RESULT -->
+  <div id="tab-result" class="tab-pane">
+  <div class="main-card">
+    <div id="result-area">
+      <div class="empty">「復原性を判定する」ボタンを押してください</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- GUIDE -->
+  <div id="tab-guide" class="tab-pane">
+  <div class="main-card">
+
+    <div class="sec">計算手順（附属書[2-2] 第2項）</div>
+    <div class="step-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">小安則第8章で求めた旅客定員の数を②式の <em>n</em> に代入してFの値を求め、このnの値とFの値を①式に代入し、同式を満足するか確認する。</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">(1)で①式を満足しない場合には、②式のnの値を適当に減じた場合のFの値を求め、このnの値とFの値を再度①式に代入して確認する。</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">(2)によっても①式を満足しない場合は、①式を満足するまでnを減じながら(2)の方法を繰り返す。</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">旅客搭載場所が2層以上の場合、h = (n₁h₁+n₂h₂+…)/(n₁+n₂+…) で加重平均算定。n₁,n₂,… は想定される最も厳しい場合のものとする。</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text">最大搭載人員 ＝ 計算で求めたn ＋ 操縦者1人 ＝ n+1人とする（第3項）。</div></div>
+    </div>
+
+    <div class="sec">①式（復原性条件）</div>
+    <div class="formula-block">M ≥ (n/100) × (7.5 + 7.5h − 13.1d + 1.4B̄·B / (2F))  … ①
+
+M   = M₀ − Wc(Hc − 1.75d₀)
+M₀  = Wℓ / tan θ　（傾斜試験）
+d   = d₀ + Wc / (0.78LB)
+Wc  ：搭載する貨物の質量（t）
+Hc  ：キール上面から貨物の重心まで（m）</div>
+
+    <div class="sec">②式（乾げん補正）</div>
+    <div class="formula-block">F = f − 0.096 × (n / LB)  … ②
+　　ただし B/5.5 より大となるときは B/5.5 の値とする
+
+f   = f₀ − Wc / (0.78LB)
+f₀  ：傾斜試験時の乾げん（m）</div>
+
+    <div class="sec">③式（沿海区域用 定員上限）</div>
+    <div class="formula-block">n ≤ LB(F₁ − f) / 0.096 − 1  … ③
+
+F₁  ：人を搭載しない状態における最小乾げん（m）</div>
+
+    <div class="sec">n 上限（F₂ 喫水条件）</div>
+    <div class="formula-block">n ≤ (F₂ − 0.025L) × LB / 0.33 − 1
+
+F₂  ：人を搭載しない状態での船尾の最小乾げん（m）</div>
+
+  </div>
+  </div><!-- /guide -->
+
+</div><!-- /container -->
+
+<footer>
+  附属書[2-2] — 小型船舶安全規則 に基づく計算ツール ／ 本ツールは参考値を提供するものであり、公式検査の代替となりません。
+</footer>
+
+<script>
+function switchTab(id){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['input','result','guide'][i]===id);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
+function setZone(v){
+  document.getElementById('lbl-coastal').classList.toggle('checked',v==='coastal');
+  document.getElementById('lbl-inland').classList.toggle('checked', v==='inland');
+  document.querySelector('input[value="'+v+'"]').checked=true;
+}
+function g(id){return parseFloat(document.getElementById(id).value)||0;}
+function fmt(x,d){return(!isFinite(x)||isNaN(x))?'—':x.toFixed(d!==undefined?d:4);}
+
+function calculate(){
+  const W=g('W'),ell=g('ell'),theta=g('theta');
+  const d0=g('d0'),f0=g('f0');
+  const L=g('L'),B=g('B'),Bbar=g('Bbar');
+  const F1=g('F1'),F2=g('F2');
+  const Wc=g('Wc'),Hc=g('Hc');
+  const n1=g('n1'),h1=g('h1'),n2=g('n2'),h2=g('h2'),n3=g('n3'),h3=g('h3');
+  const zone=document.querySelector('input[name="zone"]:checked').value;
+
+  const M0=W*ell/Math.tan(theta*Math.PI/180);
+  const d=d0+Wc/(0.78*L*B);
+  const f=f0-Wc/(0.78*L*B);
+  const M=M0-Wc*(Hc-1.75*d0);
+  const Fmax=B/5.5;
+  const totN=n1+n2+n3;
+  const h=totN>0?(n1*h1+n2*h2+n3*h3)/totN:h1;
+
+  const nMax_F2=(F2-0.025*L)*L*B/0.33-1;
+  const nMax_coast=zone==='coastal'?L*B*(F1-f)/0.096-1:Infinity;
+  const nCap=Math.floor(Math.min(nMax_F2,nMax_coast,2000));
+
+  function calcF(n){return Math.min(f-0.096*(n/(L*B)),Fmax);}
+  function chk1(n){
+    const F=calcF(n);
+    if(F<=0)return{ok:false,F,rhs:Infinity};
+    const rhs=(n/100)*(7.5+7.5*h-13.1*d+1.4*Bbar*B/(2*F));
+    return{ok:M>=rhs,F,rhs};
+  }
+
+  let nOk=0,found=false;
+  for(let n=Math.max(0,nCap);n>=0;n--){
+    if(chk1(n).ok){nOk=n;found=true;break;}
+  }
+  const fc=chk1(nOk);
+  const maxP=nOk+1;
+
+  const rows=[];
+  for(let i=-3;i<=6;i++){
+    const nn=nOk+3-i;if(nn<0)continue;
+    const r=chk1(nn);
+    rows.push({n:nn,F:r.F,rhs:r.rhs,ok:r.ok,hl:nn===nOk});
+  }
+
+  document.getElementById('result-area').innerHTML=`
+<div class="sec" style="margin-top:0">基本算定値</div>
+<div class="r-card">
+  <div class="result-row"><span class="lbl">M₀ = Wℓ / tan θ</span><span class="val">${fmt(M0)} kN·m</span></div>
+  <div class="result-row"><span class="lbl">M = M₀ − Wc(Hc − 1.75d₀)</span><span class="val">${fmt(M)} kN·m</span></div>
+  <div class="result-row"><span class="lbl">d = d₀ + Wc / (0.78LB)</span><span class="val">${fmt(d)} m</span></div>
+  <div class="result-row"><span class="lbl">f = f₀ − Wc / (0.78LB)</span><span class="val">${fmt(f)} m</span></div>
+  <div class="result-row"><span class="lbl">h（客席床高 加重平均）</span><span class="val">${fmt(h)} m</span></div>
+  <div class="result-row"><span class="lbl">B / 5.5（F の上限値）</span><span class="val">${fmt(Fmax)} m</span></div>
+</div>
+<div class="sec">定員上限チェック</div>
+<div class="r-card">
+  <div class="result-row"><span class="lbl">F₂ 条件 n ≤</span><span class="val">${fmt(nMax_F2,1)} 人</span></div>
+  ${zone==='coastal'?`<div class="result-row"><span class="lbl">③式（沿海）n ≤</span><span class="val">${fmt(nMax_coast,1)} 人</span></div>`:''}
+</div>
+<div class="sec">①②式による旅客定員の探索</div>
+<div class="r-card">
+  ${found?`
+  <div class="result-row"><span class="lbl">①式を満足する最大 n</span><span class="val">${nOk} 人</span></div>
+  <div class="result-row"><span class="lbl">このときの F（②式）</span><span class="val">${fmt(fc.F)} m</span></div>
+  <div class="result-row"><span class="lbl">①式 左辺 M</span><span class="val">${fmt(M)} kN·m</span></div>
+  <div class="result-row"><span class="lbl">①式 右辺</span><span class="val">${fmt(fc.rhs)} kN·m</span></div>
+  <div class="verdict ok">✓ ①式 M ≥ 右辺　充足（余裕 ${fmt(M-fc.rhs,4)} kN·m）</div>
+  `:`<div class="verdict ng">✗ n = 0 でも①式を満足できません。入力値を確認してください。</div>`}
+</div>
+${found?`
+<div class="answer-box">
+  <div class="big">${maxP} 人</div>
+  <div class="sub">最大搭載人員（旅客 ${nOk} 人 ＋ 操縦者 1 人）</div>
+  <div class="detail">附属書[2-2] 第3項 より</div>
+</div>`:''}
+<div class="sec">n 別検討表（境界付近）</div>
+<div class="cmp-wrap">
+<table class="cmp-table">
+  <thead><tr>
+    <th style="text-align:center">n（人）</th>
+    <th>F（m）</th><th>①式 右辺</th><th>M（左辺）</th>
+    <th style="text-align:center">判定</th>
+  </tr></thead>
+  <tbody>
+    ${rows.map(r=>`
+    <tr class="${r.hl?'hl':''}">
+      <td>${r.n}</td><td>${fmt(r.F,4)}</td><td>${fmt(r.rhs,4)}</td><td>${fmt(M,4)}</td>
+      <td style="text-align:center"><span class="badge ${r.ok?'ok':'ng'}">${r.ok?'○':'×'}</span></td>
+    </tr>`).join('')}
+  </tbody>
+</table>
+</div>`;
+  switchTab('result');
+}
+</script>
+</body>
+</html>
